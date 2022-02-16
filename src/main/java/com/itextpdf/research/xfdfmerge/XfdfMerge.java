@@ -8,9 +8,7 @@ import com.itextpdf.forms.xfdf.XfdfConstants;
 import com.itextpdf.forms.xfdf.XfdfObject;
 import com.itextpdf.forms.xfdf.XfdfObjectReadingUtils;
 import com.itextpdf.io.logs.IoLogMessageConstant;
-import com.itextpdf.kernel.colors.Color;
 import com.itextpdf.kernel.colors.DeviceRgb;
-import com.itextpdf.kernel.geom.AffineTransform;
 import com.itextpdf.kernel.geom.Rectangle;
 import com.itextpdf.kernel.pdf.PdfDocument;
 import com.itextpdf.kernel.pdf.PdfName;
@@ -19,7 +17,6 @@ import com.itextpdf.kernel.pdf.PdfString;
 import com.itextpdf.kernel.pdf.PdfWriter;
 import com.itextpdf.kernel.pdf.StampingProperties;
 import com.itextpdf.kernel.pdf.annot.PdfAnnotation;
-import com.itextpdf.kernel.pdf.annot.PdfAnnotationAppearance;
 import com.itextpdf.kernel.pdf.annot.PdfCaretAnnotation;
 import com.itextpdf.kernel.pdf.annot.PdfFreeTextAnnotation;
 import com.itextpdf.kernel.pdf.annot.PdfMarkupAnnotation;
@@ -28,13 +25,7 @@ import com.itextpdf.kernel.pdf.annot.PdfStampAnnotation;
 import com.itextpdf.kernel.pdf.annot.PdfTextAnnotation;
 import com.itextpdf.kernel.pdf.annot.PdfTextMarkupAnnotation;
 import com.itextpdf.kernel.pdf.canvas.PdfCanvas;
-import com.itextpdf.kernel.pdf.colorspace.PdfSpecialCs;
-import com.itextpdf.kernel.pdf.colorspace.PdfSpecialCs.DeviceN;
 import com.itextpdf.kernel.pdf.xobject.PdfFormXObject;
-import com.itextpdf.kernel.pdf.xobject.PdfXObject;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.FileInputStream;
 import java.io.InputStream;
@@ -43,6 +34,8 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class XfdfMerge {
 
@@ -199,7 +192,7 @@ public class XfdfMerge {
         return this.commentXObj;
     }
 
-    private void addTextMarkupAnnotationToPdf(PdfName subtype, AnnotObject annotObject) {
+    private PdfTextMarkupAnnotation addTextMarkupAnnotationToPdf(PdfName subtype, AnnotObject annotObject) {
         Rectangle rect = readAnnotRect(annotObject);
         float[] quads = readAnnotQuadPoints(annotObject);
         PdfTextMarkupAnnotation pdfAnnot = new PdfTextMarkupAnnotation(rect, subtype, quads);
@@ -209,6 +202,7 @@ public class XfdfMerge {
         int page = readAnnotPage(annotObject);
         pdfDocument.getPage(page).addAnnotation(pdfAnnot);
         addPopupAnnotation(page, pdfAnnot, annotObject.getPopup());
+        return pdfAnnot;
     }
 
     private void addAnnotationToPdf(AnnotObject annotObject) {
@@ -242,13 +236,16 @@ public class XfdfMerge {
                     addTextMarkupAnnotationToPdf(PdfName.Highlight, annotObject);
                     break;
                 case XfdfConstants.UNDERLINE:
-                    addTextMarkupAnnotationToPdf(PdfName.Underline, annotObject);
+                    addTextMarkupAnnotationToPdf(PdfName.Underline, annotObject)
+                            .setColor(DeviceRgb.RED);
                     break;
                 case XfdfConstants.STRIKEOUT:
-                    addTextMarkupAnnotationToPdf(PdfName.StrikeOut, annotObject);
+                    addTextMarkupAnnotationToPdf(PdfName.StrikeOut, annotObject)
+                            .setColor(DeviceRgb.RED);
                     break;
                 case XfdfConstants.SQUIGGLY:
-                    addTextMarkupAnnotationToPdf(PdfName.Squiggly, annotObject);
+                    addTextMarkupAnnotationToPdf(PdfName.Squiggly, annotObject)
+                            .setColor(DeviceRgb.RED);
                     break;
                 case XfdfConstants.CARET:
                     PdfCaretAnnotation caretAnnotation = new PdfCaretAnnotation(readAnnotRect(annotObject));
