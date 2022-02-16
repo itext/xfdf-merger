@@ -117,7 +117,6 @@ public class XfdfMerge {
             if("group".equalsIgnoreCase(annotObject.getAttributeValue(XfdfConstants.REPLY_TYPE))) {
                 annotation.setReplyType(PdfName.Group);
             }
-            // TODO make it so that the order doesn't matter?
             PdfAnnotation inReplyToAnnot = annotMap.get(irpt);
             if(inReplyToAnnot != null) {
                 annotation.setInReplyTo(inReplyToAnnot);
@@ -217,7 +216,6 @@ public class XfdfMerge {
         int page;
         if (annotName != null) {
             switch (annotName) {
-                //TODO DEVSIX-4027 add all attributes properly one by one
                 case XfdfConstants.TEXT:
                     PdfTextAnnotation pdfTextAnnotation = new PdfTextAnnotation(readAnnotRect(annotObject));
                     addCommonAnnotationAttributes(pdfTextAnnotation, annotObject);
