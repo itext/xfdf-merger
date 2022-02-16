@@ -139,7 +139,7 @@ public class XfdfMerge {
             annotation.setRichText(new PdfString(rcString));
         }
 
-        PdfString plainContents = annotation.getContents();
+        PdfString plainContents = annotObject.getContents();
         if(plainContents != null && !plainContents.toString().isBlank()) {
             String pcString = plainContents.toString().trim();
             annotation.setContents(new PdfString(pcString));
