@@ -9,6 +9,7 @@ import com.itextpdf.forms.xfdf.XfdfObject;
 import com.itextpdf.forms.xfdf.XfdfObjectReadingUtils;
 import com.itextpdf.io.logs.IoLogMessageConstant;
 import com.itextpdf.kernel.colors.DeviceRgb;
+import com.itextpdf.kernel.geom.AffineTransform;
 import com.itextpdf.kernel.geom.Rectangle;
 import com.itextpdf.kernel.pdf.PdfDocument;
 import com.itextpdf.kernel.pdf.PdfName;
@@ -45,9 +46,13 @@ public class XfdfMerge {
     private final Map<String, List<PdfMarkupAnnotation>> replyMap = new HashMap<>();
     private PdfFormXObject caretXObj = null;
     private PdfFormXObject commentXObj = null;
+    private final AffineTransform transform;
+    private final int pageShift;
 
-    public XfdfMerge(PdfDocument pdfDocument) {
+    public XfdfMerge(PdfDocument pdfDocument, AffineTransform transform, int pageShift) {
         this.pdfDocument = pdfDocument;
+        this.transform = transform;
+        this.pageShift = pageShift;
     }
 
     void mergeXfdfIntoPdf(XfdfObject xfdfObject) {
@@ -137,17 +142,20 @@ public class XfdfMerge {
 
     private Rectangle readAnnotRect(AnnotObject annotObject) {
         // TODO support transformations
-        return XfdfObjectReadingUtils.convertRectFromString(annotObject.getAttributeValue(XfdfConstants.RECT));
+        String rect = annotObject.getAttributeValue(XfdfConstants.RECT);
+        return XfdfObjectReadingUtils.convertRectFromString(rect, this.transform);
     }
 
     private float[] readAnnotQuadPoints(AnnotObject annotObject) {
         // TODO support transformations
-        return XfdfObjectReadingUtils.convertQuadPointsFromCoordsString(annotObject.getAttributeValue(XfdfConstants.COORDS));
+        String coords = annotObject.getAttributeValue(XfdfConstants.COORDS);
+        return XfdfObjectReadingUtils.convertQuadPointsFromCoordsString(coords, this.transform);
     }
 
     private int readAnnotPage(AnnotObject annotObject) {
-        // TODO support transformations
-        return 1 + Integer.parseInt(annotObject.getAttribute(XfdfConstants.PAGE).getValue());
+        // iText pages are 1-indexed
+        int page = 1 + Integer.parseInt(annotObject.getAttribute(XfdfConstants.PAGE).getValue());
+        return this.pageShift + page;
     }
 
     private PdfFormXObject getCaretAppearance() {
@@ -291,7 +299,7 @@ public class XfdfMerge {
         try(PdfReader r = new PdfReader(pdfIn);
             PdfWriter w = new PdfWriter(pdfOut);
             PdfDocument pdfDoc = new PdfDocument(r, w, sp)) {
-            XfdfMerge mrg = new XfdfMerge(pdfDoc);
+            XfdfMerge mrg = new XfdfMerge(pdfDoc, new AffineTransform(), 0);
             mrg.mergeXfdfIntoPdf(xfdfRoot);
             LOGGER.info("Merged");
         }

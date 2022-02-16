@@ -1,5 +1,6 @@
 package com.itextpdf.forms.xfdf;
 
+import com.itextpdf.kernel.geom.AffineTransform;
 import com.itextpdf.kernel.geom.Rectangle;
 import com.itextpdf.kernel.pdf.annot.PdfAnnotation;
 
@@ -21,7 +22,7 @@ public final class XfdfObjectReadingUtils {
      * Converts a string containing 2 or 4 float values into a {@link Rectangle}.
      * If only two coordinates are present, they should represent {@link Rectangle} width and height.
      */
-    public static Rectangle convertRectFromString(String rectString) {
+    public static Rectangle convertRectFromString(String rectString, AffineTransform transf) {
         String delims = ",";
         StringTokenizer st = new StringTokenizer(rectString, delims);
         List<String> coordsList = new ArrayList<>();
@@ -33,11 +34,15 @@ public final class XfdfObjectReadingUtils {
         if (coordsList.size() == 2) {
             return new Rectangle(Float.parseFloat(coordsList.get(0)), Float.parseFloat(coordsList.get(1)));
         } else if (coordsList.size() == 4) {
-            float x1 = Float.parseFloat(coordsList.get(0));
-            float y1 = Float.parseFloat(coordsList.get(1));
-            float x2 = Float.parseFloat(coordsList.get(2));
-            float y2 = Float.parseFloat(coordsList.get(3));
-            return new Rectangle(x1, y1, Math.abs(x1 - x2), Math.abs(y1 - y2));
+            float[] rawCoords = new float[] {
+                    Float.parseFloat(coordsList.get(0)),
+                    Float.parseFloat(coordsList.get(1)),
+                    Float.parseFloat(coordsList.get(2)),
+                    Float.parseFloat(coordsList.get(3))
+            };
+            float[] coords = new float[4];
+            transf.transform(rawCoords, 0, coords, 0, 2);
+            return new Rectangle(coords[0], coords[1], Math.abs(coords[0] - coords[2]), Math.abs(coords[1] - coords[3]));
         }
 
         throw new IllegalArgumentException();
@@ -47,7 +52,7 @@ public final class XfdfObjectReadingUtils {
      * Converts a string containing 4 float values into a float array, representing quadPoints.
      * If the number of floats in the string is not equal to 8, returns an empty float array.
      */
-    public static float [] convertQuadPointsFromCoordsString(String coordsString) {
+    public static float [] convertQuadPointsFromCoordsString(String coordsString, AffineTransform transf) {
         String delims = ",";
         StringTokenizer st = new StringTokenizer(coordsString, delims);
         List<String> quadPointsList = new ArrayList<>();
@@ -64,6 +69,8 @@ public final class XfdfObjectReadingUtils {
         for (int i = 0; i < sz; i++) {
             quadPoints[i] = Float.parseFloat(quadPointsList.get(i));
         }
+        float[] transfQuadPoints = new float[sz];
+        transf.transform(quadPoints, 0, transfQuadPoints, 0, sz / 2);
         return quadPoints;
     }
 
@@ -103,7 +110,7 @@ public final class XfdfObjectReadingUtils {
     /**
      * Converts string containing hex color code into an array of 3 integer values representing rgb color.
      */
-    public static float[] convertColorFloatsFromString(String colorHexString){
+    public static float[] convertColorFloatsFromString(String colorHexString) {
         float[] result = new float[3];
         String colorString = colorHexString.substring(colorHexString.indexOf('#') + 1);
         if (colorString.length() == 6) {
