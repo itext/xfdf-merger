@@ -238,7 +238,8 @@ public class XfdfMerge {
                     addPopupAnnotation(page, pdfTextAnnotation, annotObject.getPopup());
                     break;
                 case XfdfConstants.HIGHLIGHT:
-                    addTextMarkupAnnotationToPdf(PdfName.Highlight, annotObject);
+                    addTextMarkupAnnotationToPdf(PdfName.Highlight, annotObject)
+                            .setColor(new DeviceRgb(1f, 1f, 0));
                     break;
                 case XfdfConstants.UNDERLINE:
                     addTextMarkupAnnotationToPdf(PdfName.Underline, annotObject)
