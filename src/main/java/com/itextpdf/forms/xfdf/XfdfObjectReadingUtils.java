@@ -56,14 +56,15 @@ public final class XfdfObjectReadingUtils {
             quadPointsList.add(st.nextToken());
         }
 
-        if (quadPointsList.size() == 8) {
-            float [] quadPoints = new float [8];
-            for (int i = 0; i < 8; i++) {
-                quadPoints[i] = Float.parseFloat(quadPointsList.get(i));
-            }
-            return quadPoints;
+        int sz = quadPointsList.size();
+        if (sz % 8 != 0) {
+            return new float[0];
         }
-        return new float[0];
+        float [] quadPoints = new float [sz];
+        for (int i = 0; i < sz; i++) {
+            quadPoints[i] = Float.parseFloat(quadPointsList.get(i));
+        }
+        return quadPoints;
     }
 
     /**
