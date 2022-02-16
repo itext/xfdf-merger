@@ -16,6 +16,7 @@ import com.itextpdf.kernel.pdf.PdfString;
 import com.itextpdf.kernel.pdf.PdfWriter;
 import com.itextpdf.kernel.pdf.StampingProperties;
 import com.itextpdf.kernel.pdf.annot.PdfAnnotation;
+import com.itextpdf.kernel.pdf.annot.PdfAnnotationAppearance;
 import com.itextpdf.kernel.pdf.annot.PdfCaretAnnotation;
 import com.itextpdf.kernel.pdf.annot.PdfFreeTextAnnotation;
 import com.itextpdf.kernel.pdf.annot.PdfMarkupAnnotation;
@@ -23,6 +24,10 @@ import com.itextpdf.kernel.pdf.annot.PdfPopupAnnotation;
 import com.itextpdf.kernel.pdf.annot.PdfStampAnnotation;
 import com.itextpdf.kernel.pdf.annot.PdfTextAnnotation;
 import com.itextpdf.kernel.pdf.annot.PdfTextMarkupAnnotation;
+import com.itextpdf.kernel.pdf.canvas.PdfCanvas;
+import com.itextpdf.kernel.pdf.xobject.PdfFormXObject;
+import com.itextpdf.kernel.pdf.xobject.PdfXObject;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,20 +42,24 @@ import java.util.Map;
 public class XfdfMerge {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(XfdfMerge.class);
+    private final PdfDocument pdfDocument;
     private final Map<String, PdfAnnotation> annotMap = new HashMap<>();
     private final Map<String, List<PdfMarkupAnnotation>> replyMap = new HashMap<>();
 
-    void mergeXfdfIntoPdf(XfdfObject xfdfObject, PdfDocument pdfDocument) {
-        mergeAnnotations(xfdfObject.getAnnots(), pdfDocument);
+    public XfdfMerge(PdfDocument pdfDocument) {
+        this.pdfDocument = pdfDocument;
+    }
+
+    void mergeXfdfIntoPdf(XfdfObject xfdfObject) {
+        mergeAnnotations(xfdfObject.getAnnots());
     }
 
     /**
      * Merges existing XfdfObject into pdf document associated with it.
      *
      * @param annotsObject    The AnnotsObject with children AnnotObject entities to be mapped into PdfAnnotations.
-     * @param pdfDocument     The associated pdf document.
      */
-    private void mergeAnnotations(AnnotsObject annotsObject, PdfDocument pdfDocument) {
+    private void mergeAnnotations(AnnotsObject annotsObject) {
         List<AnnotObject> annotList = null;
         if (annotsObject != null) {
             annotList = annotsObject.getAnnotsList();
@@ -58,7 +67,7 @@ public class XfdfMerge {
 
         if (annotList != null && !annotList.isEmpty()) {
             for (AnnotObject annot : annotList) {
-                addAnnotationToPdf(annot, pdfDocument);
+                addAnnotationToPdf(annot);
             }
         }
     }
@@ -78,14 +87,14 @@ public class XfdfMerge {
         annotation.setTitle(new PdfString(annotObject.getAttributeValue(XfdfConstants.TITLE)));
     }
 
-    private void addPopupAnnotation(int page, PdfMarkupAnnotation parent, AnnotObject popup, PdfDocument pdfDoc) {
+    private void addPopupAnnotation(int page, PdfMarkupAnnotation parent, AnnotObject popup) {
         if(popup != null) {
             PdfPopupAnnotation pdfPopupAnnot = new PdfPopupAnnotation(readAnnotRect(popup));
             // TODO set Open based on value in XFDF
             pdfPopupAnnot.setOpen(false)
                     .setFlags(XfdfObjectReadingUtils.convertFlagsFromString(popup.getAttributeValue(XfdfConstants.FLAGS)));
             parent.setPopup(pdfPopupAnnot);
-            pdfDoc.getPage(page).addAnnotation(pdfPopupAnnot);
+            pdfDocument.getPage(page).addAnnotation(pdfPopupAnnot);
         }
     }
 
@@ -142,7 +151,7 @@ public class XfdfMerge {
     }
 
 
-    private void addTextMarkupAnnotationToPdf(PdfName subtype, AnnotObject annotObject, PdfDocument pdfDocument) {
+    private void addTextMarkupAnnotationToPdf(PdfName subtype, AnnotObject annotObject) {
         Rectangle rect = readAnnotRect(annotObject);
         float[] quads = readAnnotQuadPoints(annotObject);
         PdfTextMarkupAnnotation pdfAnnot = new PdfTextMarkupAnnotation(rect, subtype, quads);
@@ -151,10 +160,10 @@ public class XfdfMerge {
         addMarkupAnnotationAttributes(pdfAnnot, annotObject);
         int page = readAnnotPage(annotObject);
         pdfDocument.getPage(page).addAnnotation(pdfAnnot);
-        addPopupAnnotation(page, pdfAnnot, annotObject.getPopup(), pdfDocument);
+        addPopupAnnotation(page, pdfAnnot, annotObject.getPopup());
     }
 
-    private void addAnnotationToPdf(AnnotObject annotObject, PdfDocument pdfDocument) {
+    private void addAnnotationToPdf(AnnotObject annotObject) {
         String annotName = annotObject.getName();
         int page;
         if (annotName != null) {
@@ -175,19 +184,19 @@ public class XfdfMerge {
 
                     page = readAnnotPage(annotObject);
                     pdfDocument.getPage(page).addAnnotation(pdfTextAnnotation);
-                    addPopupAnnotation(page, pdfTextAnnotation, annotObject.getPopup(), pdfDocument);
+                    addPopupAnnotation(page, pdfTextAnnotation, annotObject.getPopup());
                     break;
                 case XfdfConstants.HIGHLIGHT:
-                    addTextMarkupAnnotationToPdf(PdfName.Highlight, annotObject, pdfDocument);
+                    addTextMarkupAnnotationToPdf(PdfName.Highlight, annotObject);
                     break;
                 case XfdfConstants.UNDERLINE:
-                    addTextMarkupAnnotationToPdf(PdfName.Underline, annotObject, pdfDocument);
+                    addTextMarkupAnnotationToPdf(PdfName.Underline, annotObject);
                     break;
                 case XfdfConstants.STRIKEOUT:
-                    addTextMarkupAnnotationToPdf(PdfName.StrikeOut, annotObject, pdfDocument);
+                    addTextMarkupAnnotationToPdf(PdfName.StrikeOut, annotObject);
                     break;
                 case XfdfConstants.SQUIGGLY:
-                    addTextMarkupAnnotationToPdf(PdfName.Squiggly, annotObject, pdfDocument);
+                    addTextMarkupAnnotationToPdf(PdfName.Squiggly, annotObject);
                     break;
                 case XfdfConstants.CARET:
                     PdfCaretAnnotation caretAnnotation = new PdfCaretAnnotation(readAnnotRect(annotObject));
@@ -195,7 +204,7 @@ public class XfdfMerge {
                     addMarkupAnnotationAttributes(caretAnnotation, annotObject);
                     page = readAnnotPage(annotObject);
                     pdfDocument.getPage(page).addAnnotation(caretAnnotation);
-                    addPopupAnnotation(page, caretAnnotation, annotObject.getPopup(), pdfDocument);
+                    addPopupAnnotation(page, caretAnnotation, annotObject.getPopup());
                     break;
                 case XfdfConstants.STAMP:
                     pdfDocument.getPage(readAnnotPage(annotObject))
@@ -232,8 +241,8 @@ public class XfdfMerge {
         try(PdfReader r = new PdfReader(pdfIn);
             PdfWriter w = new PdfWriter(pdfOut);
             PdfDocument pdfDoc = new PdfDocument(r, w, sp)) {
-            XfdfMerge mrg = new XfdfMerge();
-            mrg.mergeXfdfIntoPdf(xfdfRoot, pdfDoc);
+            XfdfMerge mrg = new XfdfMerge(pdfDoc);
+            mrg.mergeXfdfIntoPdf(xfdfRoot);
             LOGGER.info("Merged");
         }
     }
