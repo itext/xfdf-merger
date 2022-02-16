@@ -31,6 +31,7 @@ import com.itextpdf.kernel.pdf.xobject.PdfFormXObject;
 import java.io.FileInputStream;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -141,13 +142,11 @@ public class XfdfMerge {
     }
 
     private Rectangle readAnnotRect(AnnotObject annotObject) {
-        // TODO support transformations
         String rect = annotObject.getAttributeValue(XfdfConstants.RECT);
         return XfdfObjectReadingUtils.convertRectFromString(rect, this.transform);
     }
 
     private float[] readAnnotQuadPoints(AnnotObject annotObject) {
-        // TODO support transformations
         String coords = annotObject.getAttributeValue(XfdfConstants.COORDS);
         return XfdfObjectReadingUtils.convertQuadPointsFromCoordsString(coords, this.transform);
     }
@@ -281,17 +280,46 @@ public class XfdfMerge {
         }
     }
 
+    private static final String USAGE = "Usage: XfdfMerge input.pdf input.xfdf output.pdf [PGNUMSHIFT/XSHIFT/YSHIFT/SCALE]";
     public static void main(String[] args) throws Exception {
-        if(args.length != 3) {
-            System.err.println("Usage: XfdfMerge input.pdf input.xfdf output.pdf");
+        if(args.length != 3 && args.length != 4) {
+            System.err.println(USAGE);
             return;
         }
         String pdfIn = args[0];
         String xfdfIn = args[1];
         String pdfOut = args[2];
 
+        AffineTransform transform;
+        int pageShift;
+        if(args.length == 4) {
+            // process transformation argument
+            String[] split = args[3].split("/");
+            if(split.length != 4) {
+                System.err.println(USAGE);
+                return;
+            }
+            try {
+                pageShift = Integer.parseInt(split[0]);
+                double xShift = Double.parseDouble(split[1]);
+                double yShift = Double.parseDouble(split[2]);
+                double scale = Double.parseDouble(split[3]);
+                double[] matrix = new double[] {scale, 0, 0, scale, xShift, yShift};
+                transform = new AffineTransform(matrix);
+                LOGGER.info(
+                        "Applying transformation {}" + "; page number shift={}",
+                        Arrays.toString(matrix),
+                        pageShift);
+            } catch(NumberFormatException nfe) {
+                System.err.println(USAGE);
+                return;
+            }
+        } else {
+            transform = new AffineTransform();
+            pageShift = 0;
+        }
+
         XfdfObject xfdfRoot;
-        LOGGER.info("Reading XFDF data from " + xfdfIn);
         try(InputStream is = new FileInputStream(xfdfIn)) {
             xfdfRoot = new XfdfAnnotFactory().createXfdfObject(is);
         }
@@ -299,9 +327,8 @@ public class XfdfMerge {
         try(PdfReader r = new PdfReader(pdfIn);
             PdfWriter w = new PdfWriter(pdfOut);
             PdfDocument pdfDoc = new PdfDocument(r, w, sp)) {
-            XfdfMerge mrg = new XfdfMerge(pdfDoc, new AffineTransform(), 0);
+            XfdfMerge mrg = new XfdfMerge(pdfDoc, transform, pageShift);
             mrg.mergeXfdfIntoPdf(xfdfRoot);
-            LOGGER.info("Merged");
         }
     }
 }
