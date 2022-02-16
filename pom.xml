@@ -32,6 +32,17 @@
             <groupId>com.itextpdf</groupId>
             <artifactId>forms</artifactId>
             <version>7.2.1</version>
+            <exclusions>
+                <!-- put these deps in the provided scope -->
+                <exclusion>
+                    <groupId>org.bouncycastle</groupId>
+                    <artifactId>bcpkix-jdk15on</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.bouncycastle</groupId>
+                    <artifactId>bcprov-jdk15on</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>org.slf4j</groupId>
