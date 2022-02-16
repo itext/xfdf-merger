@@ -10,6 +10,7 @@ import com.itextpdf.forms.xfdf.XfdfObjectReadingUtils;
 import com.itextpdf.io.logs.IoLogMessageConstant;
 import com.itextpdf.kernel.colors.Color;
 import com.itextpdf.kernel.colors.DeviceRgb;
+import com.itextpdf.kernel.geom.AffineTransform;
 import com.itextpdf.kernel.geom.Rectangle;
 import com.itextpdf.kernel.pdf.PdfDocument;
 import com.itextpdf.kernel.pdf.PdfName;
@@ -27,6 +28,8 @@ import com.itextpdf.kernel.pdf.annot.PdfStampAnnotation;
 import com.itextpdf.kernel.pdf.annot.PdfTextAnnotation;
 import com.itextpdf.kernel.pdf.annot.PdfTextMarkupAnnotation;
 import com.itextpdf.kernel.pdf.canvas.PdfCanvas;
+import com.itextpdf.kernel.pdf.colorspace.PdfSpecialCs;
+import com.itextpdf.kernel.pdf.colorspace.PdfSpecialCs.DeviceN;
 import com.itextpdf.kernel.pdf.xobject.PdfFormXObject;
 import com.itextpdf.kernel.pdf.xobject.PdfXObject;
 
@@ -48,6 +51,7 @@ public class XfdfMerge {
     private final Map<String, PdfAnnotation> annotMap = new HashMap<>();
     private final Map<String, List<PdfMarkupAnnotation>> replyMap = new HashMap<>();
     private PdfFormXObject caretXObj = null;
+    private PdfFormXObject commentXObj = null;
 
     public XfdfMerge(PdfDocument pdfDocument) {
         this.pdfDocument = pdfDocument;
@@ -153,7 +157,6 @@ public class XfdfMerge {
         return 1 + Integer.parseInt(annotObject.getAttribute(XfdfConstants.PAGE).getValue());
     }
 
-
     private PdfFormXObject getCaretAppearance() {
         if(this.caretXObj != null) {
             return this.caretXObj;
@@ -161,7 +164,7 @@ public class XfdfMerge {
         // draw a caret on a 30x30 canvas
         this.caretXObj = new PdfFormXObject(new Rectangle(30, 30));
         PdfCanvas canvas = new PdfCanvas(this.caretXObj, this.pdfDocument);
-        canvas.setColor(DeviceRgb.BLUE, true)
+        canvas.setFillColor(DeviceRgb.BLUE)
                 .moveTo(15, 30)
                 .curveTo(15, 30, 15, 0, 0, 0)
                 .lineTo(30, 0)
@@ -169,6 +172,31 @@ public class XfdfMerge {
                 .closePath()
                 .fill();
         return this.caretXObj;
+    }
+
+    private PdfFormXObject getCommentAppearance() {
+        if(this.commentXObj != null) {
+            return this.commentXObj;
+        }
+        // draw a speech bubble on a 30x30 canvas
+        this.commentXObj = new PdfFormXObject(new Rectangle(30, 30));
+        PdfCanvas canvas = new PdfCanvas(this.commentXObj, this.pdfDocument);
+
+        canvas.setFillColorRgb(1, 1, 0)
+                .setLineWidth(0.85f)
+                .moveTo(6, 27.5)
+                .curveTo(4.3, 27.5, 3, 26.5, 3, 25)
+                .lineTo(3, 12)
+                .curveTo(3, 10.25, 4.3, 10.25, 6, 10.25)
+                .lineTo(7.6, 10.25)
+                .lineTo(11.25, 3)
+                .lineTo(13, 10.25)
+                .lineTo(25.5, 10.25)
+                .curveTo(25.1, 10.25, 26.25, 10.25, 26.25, 12)
+                .lineTo(26.25, 25)
+                .curveTo(26.25, 26.5, 25, 27.5, 23.5, 27.5)
+                .closePath().fill();
+        return this.commentXObj;
     }
 
     private void addTextMarkupAnnotationToPdf(PdfName subtype, AnnotObject annotObject) {
@@ -194,7 +222,11 @@ public class XfdfMerge {
                     addCommonAnnotationAttributes(pdfTextAnnotation, annotObject);
                     addMarkupAnnotationAttributes(pdfTextAnnotation, annotObject);
 
-                    pdfTextAnnotation.setIconName(new PdfName(annotObject.getAttributeValue(XfdfConstants.ICON)));
+                    String icon = annotObject.getAttributeValue(XfdfConstants.ICON);
+                    if("Comment".equals(icon)) {
+                        pdfTextAnnotation.setNormalAppearance(this.getCommentAppearance().getPdfObject());
+                    }
+                    pdfTextAnnotation.setIconName(new PdfName(icon));
                     if(annotObject.getAttributeValue(XfdfConstants.STATE) != null) {
                         pdfTextAnnotation.setState(new PdfString(annotObject.getAttributeValue(XfdfConstants.STATE)));
                     }
