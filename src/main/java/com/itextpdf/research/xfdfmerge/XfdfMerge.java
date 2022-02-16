@@ -8,6 +8,8 @@ import com.itextpdf.forms.xfdf.XfdfConstants;
 import com.itextpdf.forms.xfdf.XfdfObject;
 import com.itextpdf.forms.xfdf.XfdfObjectReadingUtils;
 import com.itextpdf.io.logs.IoLogMessageConstant;
+import com.itextpdf.kernel.colors.Color;
+import com.itextpdf.kernel.colors.DeviceRgb;
 import com.itextpdf.kernel.geom.Rectangle;
 import com.itextpdf.kernel.pdf.PdfDocument;
 import com.itextpdf.kernel.pdf.PdfName;
@@ -45,6 +47,7 @@ public class XfdfMerge {
     private final PdfDocument pdfDocument;
     private final Map<String, PdfAnnotation> annotMap = new HashMap<>();
     private final Map<String, List<PdfMarkupAnnotation>> replyMap = new HashMap<>();
+    private PdfFormXObject caretXObj = null;
 
     public XfdfMerge(PdfDocument pdfDocument) {
         this.pdfDocument = pdfDocument;
@@ -151,6 +154,23 @@ public class XfdfMerge {
     }
 
 
+    private PdfFormXObject getCaretAppearance() {
+        if(this.caretXObj != null) {
+            return this.caretXObj;
+        }
+        // draw a caret on a 30x30 canvas
+        this.caretXObj = new PdfFormXObject(new Rectangle(30, 30));
+        PdfCanvas canvas = new PdfCanvas(this.caretXObj, this.pdfDocument);
+        canvas.setColor(DeviceRgb.BLUE, true)
+                .moveTo(15, 30)
+                .curveTo(15, 30, 15, 0, 0, 0)
+                .lineTo(30, 0)
+                .curveTo(15, 0, 15,30, 15, 30)
+                .closePath()
+                .fill();
+        return this.caretXObj;
+    }
+
     private void addTextMarkupAnnotationToPdf(PdfName subtype, AnnotObject annotObject) {
         Rectangle rect = readAnnotRect(annotObject);
         float[] quads = readAnnotQuadPoints(annotObject);
@@ -200,6 +220,7 @@ public class XfdfMerge {
                     break;
                 case XfdfConstants.CARET:
                     PdfCaretAnnotation caretAnnotation = new PdfCaretAnnotation(readAnnotRect(annotObject));
+                    caretAnnotation.setNormalAppearance(this.getCaretAppearance().getPdfObject());
                     addCommonAnnotationAttributes(caretAnnotation, annotObject);
                     addMarkupAnnotationAttributes(caretAnnotation, annotObject);
                     page = readAnnotPage(annotObject);
