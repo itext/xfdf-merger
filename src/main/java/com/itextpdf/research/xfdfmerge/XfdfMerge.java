@@ -121,7 +121,8 @@ public class XfdfMerge {
 
         PdfString rc = annotObject.getContentsRichText();
         if(rc != null && !rc.toString().isBlank()) {
-            annotation.setRichText(rc);
+            String rcString = rc.toString().trim();
+            annotation.setRichText(new PdfString(rcString));
         }
     }
 

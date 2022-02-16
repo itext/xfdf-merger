@@ -33,8 +33,11 @@ public final class XfdfObjectReadingUtils {
         if (coordsList.size() == 2) {
             return new Rectangle(Float.parseFloat(coordsList.get(0)), Float.parseFloat(coordsList.get(1)));
         } else if (coordsList.size() == 4) {
-            return new Rectangle(Float.parseFloat(coordsList.get(0)), Float.parseFloat(coordsList.get(1)),
-                    Float.parseFloat(coordsList.get(2)), Float.parseFloat(coordsList.get(3)));
+            float x1 = Float.parseFloat(coordsList.get(0));
+            float y1 = Float.parseFloat(coordsList.get(1));
+            float x2 = Float.parseFloat(coordsList.get(2));
+            float y2 = Float.parseFloat(coordsList.get(3));
+            return new Rectangle(x1, y1, Math.abs(x1 - x2), Math.abs(y1 - y2));
         }
 
         throw new IllegalArgumentException();
