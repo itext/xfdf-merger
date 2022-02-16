@@ -138,6 +138,12 @@ public class XfdfMerge {
             String rcString = rc.toString().trim();
             annotation.setRichText(new PdfString(rcString));
         }
+
+        PdfString plainContents = annotation.getContents();
+        if(plainContents != null && !plainContents.toString().isBlank()) {
+            String pcString = plainContents.toString().trim();
+            annotation.setContents(new PdfString(pcString));
+        }
     }
 
     private Rectangle readAnnotRect(AnnotObject annotObject) {
