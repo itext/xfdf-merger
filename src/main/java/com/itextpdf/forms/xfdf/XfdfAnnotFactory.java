@@ -3,6 +3,10 @@ package com.itextpdf.forms.xfdf;
 import com.itextpdf.commons.utils.MessageFormatUtil;
 import com.itextpdf.io.logs.IoLogMessageConstant;
 import com.itextpdf.kernel.pdf.PdfString;
+
+import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.w3c.dom.DOMConfiguration;
@@ -11,16 +15,8 @@ import org.w3c.dom.Element;
 import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
-import org.w3c.dom.Text;
 import org.w3c.dom.ls.DOMImplementationLS;
-import org.w3c.dom.ls.LSOutput;
 import org.w3c.dom.ls.LSSerializer;
-
-import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.List;
-import org.w3c.dom.ls.LSSerializerFilter;
-import org.w3c.dom.traversal.NodeFilter;
 
 public class XfdfAnnotFactory {
 
@@ -188,26 +184,9 @@ public class XfdfAnnotFactory {
         LSSerializer ser = ((DOMImplementationLS) parentNode.getOwnerDocument()
                         .getImplementation()
                         .getFeature("LS", "3.0")).createLSSerializer();
-        // FIXME this is actually wrong per the XFDF spec, but it allows me to work with prettified XML
-        //  so I'll leave it in for now
-        ser.setFilter(new LSSerializerFilter() {
-            @Override
-            public int getWhatToShow() {
-                return NodeFilter.SHOW_TEXT;
-            }
-
-            @Override
-            public short acceptNode(Node n) {
-                Text t = (Text) n;
-                t.setTextContent(t.getTextContent().trim());
-                return t.isElementContentWhitespace() ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT;
-            }
-        });
         DOMConfiguration domConfig = ser.getDomConfig();
         // disable XML declaration in the header (not necessary for RC in annotations)
         domConfig.setParameter("xml-declaration", false);
-        // discard whitespace FIXME remove post-debugging phase
-        domConfig.setParameter("element-content-whitespace", false);
         // Serialise all the children
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < children.getLength(); i++) {
