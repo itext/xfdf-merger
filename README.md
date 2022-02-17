@@ -65,3 +65,10 @@ parts must be present. They are processed as follows:
 More precisely, the following affine transformation is applied to all
 annotation coordinates: `(x, y) -> (SCALE * x + XSHIFT, SCALE * y + YSHIFT)`.
 In other words, the effective default value of `transform` is `0/0/0/1`.
+
+
+## Disclaimer
+
+This is an experimental tool, not an iText product. It is provided to the
+community under the terms of the AGPL (see [LICENSE](LICENSE.md)) on an as-is
+basis.
