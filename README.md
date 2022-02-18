@@ -46,6 +46,12 @@ After building, the merge tool can be invoked as follows:
 ./xfdfmerge.sh input.pdf input.xfdf output.pdf [transform]
 ```
 
+Alternatively:
+
+```bash
+java -jar target/xfdf-merge-<VERSION>-jar-with-dependencies.jar input.pdf input.xfdf output.pdf [transform]
+```
+
 Parameters:
 
  - `input.pdf`: the input PDF document;
