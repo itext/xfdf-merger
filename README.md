@@ -13,7 +13,7 @@ The merge tool will process annotations of the following types:
  - **Highlight**
  - **Squiggly**
  - **Underline**
- - **Strikethrough**
+ - **StrikeOut**
  - **Stamp**
  - **FreeText**
 
