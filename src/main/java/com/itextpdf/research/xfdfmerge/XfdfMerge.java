@@ -39,6 +39,7 @@ import com.itextpdf.forms.xfdf.XfdfConstants;
 import com.itextpdf.forms.xfdf.XfdfObject;
 import com.itextpdf.forms.xfdf.XfdfObjectReadingUtils;
 import com.itextpdf.io.logs.IoLogMessageConstant;
+import com.itextpdf.kernel.colors.Color;
 import com.itextpdf.kernel.colors.DeviceRgb;
 import com.itextpdf.kernel.geom.AffineTransform;
 import com.itextpdf.kernel.geom.Rectangle;
@@ -73,6 +74,7 @@ import org.slf4j.LoggerFactory;
 public class XfdfMerge {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(XfdfMerge.class);
+    private final Color DEFAULT_HIGHLIGHT_COLOR = new DeviceRgb(1f, 0.81f, 0f);
     private final PdfDocument pdfDocument;
     private final Map<String, PdfAnnotation> annotMap = new HashMap<>();
     private final Map<String, List<PdfMarkupAnnotation>> replyMap = new HashMap<>();
@@ -109,19 +111,37 @@ public class XfdfMerge {
         }
     }
 
-    private void addCommonAnnotationAttributes(PdfAnnotation annotation, AnnotObject annotObject) {
-        annotation.setFlags(XfdfObjectReadingUtils.convertFlagsFromString(annotObject.getAttributeValue(XfdfConstants.FLAGS)));
-        annotation.setColor(XfdfObjectReadingUtils.convertColorFloatsFromString(annotObject.getAttributeValue(XfdfConstants.COLOR)));
-        annotation.setDate(new PdfString(annotObject.getAttributeValue(XfdfConstants.DATE)));
-        String name = annotObject.getAttributeValue(XfdfConstants.NAME);
-        annotation.setName(new PdfString(name));
-        annotMap.put(name, annotation);
-        // add pending replies
-        for(PdfMarkupAnnotation reply : replyMap.getOrDefault(name, Collections.emptyList())) {
-            reply.setInReplyTo(annotation);
+    private Color getAnnotColor(AnnotObject annotObject, Color defaultColor) {
+        String colorString = annotObject.getAttributeValue(XfdfConstants.COLOR);
+        if(colorString != null) {
+            int[] rgbValues = XfdfObjectReadingUtils.convertColorFloatsFromString(colorString);
+            return new DeviceRgb(rgbValues[0], rgbValues[1], rgbValues[2]);
+        } else {
+            return defaultColor;
         }
-        replyMap.remove(name);
-        annotation.setTitle(new PdfString(annotObject.getAttributeValue(XfdfConstants.TITLE)));
+    }
+
+    private void addCommonAnnotationAttributes(PdfAnnotation annotation, AnnotObject annotObject, Color color) {
+        annotation.setFlags(XfdfObjectReadingUtils.convertFlagsFromString(annotObject.getAttributeValue(XfdfConstants.FLAGS)));
+        annotation.setColor(color);
+        String dateString = annotObject.getAttributeValue(XfdfConstants.DATE);
+        if(dateString != null) {
+            annotation.setDate(new PdfString(dateString));
+        }
+        String name = annotObject.getAttributeValue(XfdfConstants.NAME);
+        if(name != null) {
+            annotation.setName(new PdfString(name));
+            annotMap.put(name, annotation);
+            // add pending replies
+            for(PdfMarkupAnnotation reply : replyMap.getOrDefault(name, Collections.emptyList())) {
+                reply.setInReplyTo(annotation);
+            }
+            replyMap.remove(name);
+        }
+        String titleString = annotObject.getAttributeValue(XfdfConstants.TITLE);
+        if(titleString != null) {
+            annotation.setTitle(new PdfString(titleString));
+        }
     }
 
     private void addPopupAnnotation(int page, PdfMarkupAnnotation parent, AnnotObject popup) {
@@ -136,8 +156,14 @@ public class XfdfMerge {
     }
 
     private void addMarkupAnnotationAttributes(PdfMarkupAnnotation annotation, AnnotObject annotObject) {
-        annotation.setCreationDate(new PdfString(annotObject.getAttributeValue(XfdfConstants.CREATION_DATE)));
-        annotation.setSubject(new PdfString(annotObject.getAttributeValue(XfdfConstants.SUBJECT)));
+        String creationDateString = annotObject.getAttributeValue(XfdfConstants.CREATION_DATE);
+        if(creationDateString != null) {
+            annotation.setCreationDate(new PdfString(creationDateString));
+        }
+        String subjectString = annotObject.getAttributeValue(XfdfConstants.SUBJECT);
+        if(subjectString != null) {
+            annotation.setSubject(new PdfString(subjectString));
+        }
         String intent = annotObject.getAttributeValue("IT");
         if(intent != null && !intent.isBlank()) {
             annotation.setIntent(new PdfName(intent));
@@ -193,14 +219,14 @@ public class XfdfMerge {
         return this.pageShift + page;
     }
 
-    private PdfFormXObject getCaretAppearance() {
+    private PdfFormXObject getCaretAppearance(Color color) {
         if(this.caretXObj != null) {
             return this.caretXObj;
         }
         // draw a caret on a 30x30 canvas
         this.caretXObj = new PdfFormXObject(new Rectangle(30, 30));
         PdfCanvas canvas = new PdfCanvas(this.caretXObj, this.pdfDocument);
-        canvas.setFillColor(DeviceRgb.BLUE)
+        canvas.setFillColor(color)
                 .moveTo(15, 30)
                 .curveTo(15, 30, 15, 0, 0, 0)
                 .lineTo(30, 0)
@@ -210,7 +236,7 @@ public class XfdfMerge {
         return this.caretXObj;
     }
 
-    private PdfFormXObject getCommentAppearance() {
+    private PdfFormXObject getCommentAppearance(Color color) {
         if(this.commentXObj != null) {
             return this.commentXObj;
         }
@@ -218,8 +244,7 @@ public class XfdfMerge {
         this.commentXObj = new PdfFormXObject(new Rectangle(30, 30));
         PdfCanvas canvas = new PdfCanvas(this.commentXObj, this.pdfDocument);
 
-        canvas.setFillColorRgb(1, 1, 0)
-                .setLineWidth(0.85f)
+        canvas.setFillColor(color).setLineWidth(0.85f)
                 .moveTo(6, 27.5)
                 .curveTo(4.3, 27.5, 3, 26.5, 3, 25)
                 .lineTo(3, 12)
@@ -235,39 +260,57 @@ public class XfdfMerge {
         return this.commentXObj;
     }
 
-    private PdfTextMarkupAnnotation addTextMarkupAnnotationToPdf(PdfName subtype, AnnotObject annotObject) {
+    private void addTextMarkupAnnotationToPdf(PdfName subtype, AnnotObject annotObject, Color color) {
         Rectangle rect = readAnnotRect(annotObject);
         float[] quads = readAnnotQuadPoints(annotObject);
         PdfTextMarkupAnnotation pdfAnnot = new PdfTextMarkupAnnotation(rect, subtype, quads);
 
-        addCommonAnnotationAttributes(pdfAnnot, annotObject);
+        addCommonAnnotationAttributes(pdfAnnot, annotObject, color);
         addMarkupAnnotationAttributes(pdfAnnot, annotObject);
         int page = readAnnotPage(annotObject);
         pdfDocument.getPage(page).addAnnotation(pdfAnnot);
         addPopupAnnotation(page, pdfAnnot, annotObject.getPopup());
-        return pdfAnnot;
+    }
+
+    private Color getDefaultColor(String annotName) {
+        switch (annotName) {
+            case XfdfConstants.TEXT:
+            case XfdfConstants.HIGHLIGHT:
+                return DEFAULT_HIGHLIGHT_COLOR;
+            case XfdfConstants.UNDERLINE:
+            case XfdfConstants.STRIKEOUT:
+            case XfdfConstants.SQUIGGLY:
+                return DeviceRgb.RED;
+            case XfdfConstants.CARET:
+                return DeviceRgb.BLUE;
+            default:
+                return DeviceRgb.BLACK;
+        }
     }
 
     private void addAnnotationToPdf(AnnotObject annotObject) {
         String annotName = annotObject.getName();
         int page;
         if (annotName != null) {
+            Color color = getAnnotColor(annotObject, getDefaultColor(annotName));
             switch (annotName) {
                 case XfdfConstants.TEXT:
                     PdfTextAnnotation pdfTextAnnotation = new PdfTextAnnotation(readAnnotRect(annotObject));
-                    addCommonAnnotationAttributes(pdfTextAnnotation, annotObject);
+                    addCommonAnnotationAttributes(pdfTextAnnotation, annotObject, color);
                     addMarkupAnnotationAttributes(pdfTextAnnotation, annotObject);
 
                     String icon = annotObject.getAttributeValue(XfdfConstants.ICON);
                     if("Comment".equals(icon)) {
-                        pdfTextAnnotation.setNormalAppearance(this.getCommentAppearance().getPdfObject());
+                        pdfTextAnnotation.setNormalAppearance(this.getCommentAppearance(color).getPdfObject());
                     }
                     pdfTextAnnotation.setIconName(new PdfName(icon));
-                    if(annotObject.getAttributeValue(XfdfConstants.STATE) != null) {
-                        pdfTextAnnotation.setState(new PdfString(annotObject.getAttributeValue(XfdfConstants.STATE)));
+                    String stateString = annotObject.getAttributeValue(XfdfConstants.STATE);
+                    if(stateString != null) {
+                        pdfTextAnnotation.setState(new PdfString(stateString));
                     }
-                    if(annotObject.getAttributeValue(XfdfConstants.STATE_MODEL) != null) {
-                        pdfTextAnnotation.setStateModel(new PdfString(annotObject.getAttributeValue(XfdfConstants.STATE_MODEL)));
+                    String stateModelString = annotObject.getAttributeValue(XfdfConstants.STATE_MODEL);
+                    if(stateModelString != null) {
+                        pdfTextAnnotation.setStateModel(new PdfString(stateModelString));
                     }
 
                     page = readAnnotPage(annotObject);
@@ -275,25 +318,21 @@ public class XfdfMerge {
                     addPopupAnnotation(page, pdfTextAnnotation, annotObject.getPopup());
                     break;
                 case XfdfConstants.HIGHLIGHT:
-                    addTextMarkupAnnotationToPdf(PdfName.Highlight, annotObject)
-                            .setColor(new DeviceRgb(1f, 1f, 0));
+                    addTextMarkupAnnotationToPdf(PdfName.Highlight, annotObject, color);
                     break;
                 case XfdfConstants.UNDERLINE:
-                    addTextMarkupAnnotationToPdf(PdfName.Underline, annotObject)
-                            .setColor(DeviceRgb.RED);
+                    addTextMarkupAnnotationToPdf(PdfName.Underline, annotObject, color);
                     break;
                 case XfdfConstants.STRIKEOUT:
-                    addTextMarkupAnnotationToPdf(PdfName.StrikeOut, annotObject)
-                            .setColor(DeviceRgb.RED);
+                    addTextMarkupAnnotationToPdf(PdfName.StrikeOut, annotObject, color);
                     break;
                 case XfdfConstants.SQUIGGLY:
-                    addTextMarkupAnnotationToPdf(PdfName.Squiggly, annotObject)
-                            .setColor(DeviceRgb.RED);
+                    addTextMarkupAnnotationToPdf(PdfName.Squiggly, annotObject, color);
                     break;
                 case XfdfConstants.CARET:
                     PdfCaretAnnotation caretAnnotation = new PdfCaretAnnotation(readAnnotRect(annotObject));
-                    caretAnnotation.setNormalAppearance(this.getCaretAppearance().getPdfObject());
-                    addCommonAnnotationAttributes(caretAnnotation, annotObject);
+                    caretAnnotation.setNormalAppearance(this.getCaretAppearance(color).getPdfObject());
+                    addCommonAnnotationAttributes(caretAnnotation, annotObject, color);
                     addMarkupAnnotationAttributes(caretAnnotation, annotObject);
                     page = readAnnotPage(annotObject);
                     pdfDocument.getPage(page).addAnnotation(caretAnnotation);

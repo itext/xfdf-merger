@@ -141,8 +141,8 @@ public final class XfdfObjectReadingUtils {
     /**
      * Converts string containing hex color code into an array of 3 integer values representing rgb color.
      */
-    public static float[] convertColorFloatsFromString(String colorHexString) {
-        float[] result = new float[3];
+    public static int[] convertColorFloatsFromString(String colorHexString) {
+        int[] result = new int[3];
         String colorString = colorHexString.substring(colorHexString.indexOf('#') + 1);
         if (colorString.length() == 6) {
             for (int i = 0; i < 3; i++) {
