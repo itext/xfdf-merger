@@ -147,8 +147,9 @@ public class XfdfMerge {
     private void addPopupAnnotation(int page, PdfMarkupAnnotation parent, AnnotObject popup) {
         if(popup != null) {
             PdfPopupAnnotation pdfPopupAnnot = new PdfPopupAnnotation(readAnnotRect(popup));
-            // TODO set Open based on value in XFDF
-            pdfPopupAnnot.setOpen(false)
+            String openProp = popup.getAttributeValue("open");
+            boolean open = "yes".equals(openProp);
+            pdfPopupAnnot.setOpen(open)
                     .setFlags(XfdfObjectReadingUtils.convertFlagsFromString(popup.getAttributeValue(XfdfConstants.FLAGS)));
             parent.setPopup(pdfPopupAnnot);
             pdfDocument.getPage(page).addAnnotation(pdfPopupAnnot);
