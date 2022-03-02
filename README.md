@@ -78,3 +78,11 @@ In other words, the effective default value of `transform` is `0/0/0/1`.
 This is an experimental tool, not an iText product. It is provided to the
 community under the terms of the AGPL (see [LICENSE](LICENSE.md)) on an as-is
 basis.
+
+
+## Versioning
+
+Pursuant to the disclaimer in the previous section, there are no stability
+guarantees between different versions or builds. However, since the release
+script ensures that the build date is always embedded into the build version
+number, you can always tell which build is the most recent.
