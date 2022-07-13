@@ -102,7 +102,7 @@ public final class XfdfObjectReadingUtils {
         }
         float[] transfQuadPoints = new float[sz];
         transf.transform(quadPoints, 0, transfQuadPoints, 0, sz / 2);
-        return quadPoints;
+        return transfQuadPoints;
     }
 
     /**
